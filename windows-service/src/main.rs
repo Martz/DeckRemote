@@ -105,18 +105,24 @@ async fn main() {
     }
 }
 
-async fn get_state(State(state): State<AppState>) -> Json<StateResponse> {
-    let state = state.lock().unwrap();
+async fn get_state(State(state): State<AppState>) -> Result<Json<StateResponse>, StatusCode> {
+    let state = state.lock().map_err(|e| {
+        error!("Failed to acquire lock: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
     let blocked_keys: Vec<String> = state.blocked_keys.iter().cloned().collect();
     info!("State requested - blocked keys: {:?}", blocked_keys);
-    Json(StateResponse { blocked_keys })
+    Ok(Json(StateResponse { blocked_keys }))
 }
 
 async fn toggle_key(
     State(state): State<AppState>,
     Json(payload): Json<ToggleKeyRequest>,
-) -> (StatusCode, Json<ToggleKeyResponse>) {
-    let mut state = state.lock().unwrap();
+) -> Result<(StatusCode, Json<ToggleKeyResponse>), StatusCode> {
+    let mut state = state.lock().map_err(|e| {
+        error!("Failed to acquire lock: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
     let was_blocked = state.blocked_keys.contains(&payload.key);
     
     if was_blocked {
@@ -129,13 +135,13 @@ async fn toggle_key(
     
     let now_blocked = !was_blocked;
     
-    (
+    Ok((
         StatusCode::OK,
         Json(ToggleKeyResponse {
             success: true,
             blocked: now_blocked,
         }),
-    )
+    ))
 }
 
 #[cfg(windows)]
@@ -143,9 +149,13 @@ fn install_keyboard_hook(state: AppState) {
     use std::sync::Once;
     
     static INIT: Once = Once::new();
+    // SAFETY: This static is necessary because Windows hook callbacks must be static functions.
+    // We use Once to ensure it's only initialized once, making it safe for concurrent access.
+    // The state is Arc<Mutex<_>> which provides thread-safety for the actual data.
     static mut GLOBAL_STATE: Option<AppState> = None;
     
     unsafe {
+        // Initialize the global state exactly once
         INIT.call_once(|| {
             GLOBAL_STATE = Some(state.clone());
         });
@@ -158,9 +168,12 @@ fn install_keyboard_hook(state: AppState) {
         );
         
         if let Ok(hook) = hook_handle {
-            let mut state = state.lock().unwrap();
-            state.hook_handle = Some(hook);
-            info!("Keyboard hook installed successfully");
+            if let Ok(mut state) = state.lock() {
+                state.hook_handle = Some(hook);
+                info!("Keyboard hook installed successfully");
+            } else {
+                error!("Failed to acquire state lock during hook installation");
+            }
         } else {
             error!("Failed to install keyboard hook");
             error!("The service may need to be run with administrator privileges");

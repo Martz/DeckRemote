@@ -60,13 +60,19 @@ class ToggleKeyBlockAction extends SingletonAction<PluginSettings> {
         const settings = { ...DEFAULT_SETTINGS, ...ev.payload.settings };
         
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+            
             const response = await fetch(`${settings.serverUrl}/keys/toggle`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ key: settings.key }),
+                signal: controller.signal,
             });
+
+            clearTimeout(timeoutId);
 
             if (response.ok) {
                 const result = await response.json();
@@ -78,10 +84,19 @@ class ToggleKeyBlockAction extends SingletonAction<PluginSettings> {
                 // Show success
                 await ev.action.showOk();
             } else {
+                console.error(`Server returned error: ${response.status} ${response.statusText}`);
                 await ev.action.showAlert();
             }
         } catch (error) {
-            console.error('Failed to toggle key:', error);
+            if (error instanceof Error) {
+                if (error.name === 'AbortError') {
+                    console.error('Request timed out after 5 seconds');
+                } else {
+                    console.error('Failed to toggle key:', error.message);
+                }
+            } else {
+                console.error('Failed to toggle key:', error);
+            }
             await ev.action.showAlert();
         }
     }
@@ -102,7 +117,14 @@ class ToggleKeyBlockAction extends SingletonAction<PluginSettings> {
      */
     private async updateState(context: string, settings: PluginSettings): Promise<void> {
         try {
-            const response = await fetch(`${settings.serverUrl}/state`);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout for polling
+            
+            const response = await fetch(`${settings.serverUrl}/state`, {
+                signal: controller.signal,
+            });
+            
+            clearTimeout(timeoutId);
             
             if (response.ok) {
                 const data = await response.json();
@@ -111,10 +133,14 @@ class ToggleKeyBlockAction extends SingletonAction<PluginSettings> {
                 
                 // Update the action state
                 await streamDeck.actions.setState(state, context);
+            } else {
+                console.warn(`Failed to fetch state: ${response.status} ${response.statusText}`);
             }
         } catch (error) {
-            // Silently fail - server might be offline
-            console.error('Failed to fetch state:', error);
+            // Silently log errors during polling - server might be offline
+            if (error instanceof Error && error.name !== 'AbortError') {
+                console.debug('Failed to fetch state:', error.message);
+            }
         }
     }
 }
