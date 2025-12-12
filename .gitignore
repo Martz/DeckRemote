@@ -1,0 +1,32 @@
+# Rust
+/windows-service/target/
+/windows-service/Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# Node.js
+/streamdeck-plugin/node_modules/
+/streamdeck-plugin/package-lock.json
+/streamdeck-plugin/com.deckremote.keyblock.sdPlugin/bin/
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+/tmp/
+*.tmp
+*.log
