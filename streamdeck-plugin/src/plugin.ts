@@ -17,6 +17,13 @@ const DEFAULT_SETTINGS: PluginSettings = {
 };
 
 /**
+ * Timeout constants (in milliseconds)
+ */
+const REQUEST_TIMEOUT_MS = 5000;  // Timeout for user-initiated actions
+const POLL_TIMEOUT_MS = 3000;     // Timeout for background polling
+const POLL_INTERVAL_MS = 2000;    // How often to poll for state updates
+
+/**
  * Action to toggle key blocking on the remote Windows PC
  */
 @action({ UUID: "com.deckremote.keyblock.toggle" })
@@ -61,7 +68,7 @@ class ToggleKeyBlockAction extends SingletonAction<PluginSettings> {
         
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
             
             const response = await fetch(`${settings.serverUrl}/keys/toggle`, {
                 method: 'POST',
@@ -109,7 +116,7 @@ class ToggleKeyBlockAction extends SingletonAction<PluginSettings> {
             for (const [context, settings] of this.contexts.entries()) {
                 await this.updateState(context, settings);
             }
-        }, 2000); // Poll every 2 seconds
+        }, POLL_INTERVAL_MS);
     }
 
     /**
@@ -118,7 +125,7 @@ class ToggleKeyBlockAction extends SingletonAction<PluginSettings> {
     private async updateState(context: string, settings: PluginSettings): Promise<void> {
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout for polling
+            const timeoutId = setTimeout(() => controller.abort(), POLL_TIMEOUT_MS);
             
             const response = await fetch(`${settings.serverUrl}/state`, {
                 signal: controller.signal,

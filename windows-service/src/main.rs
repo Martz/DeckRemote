@@ -86,10 +86,17 @@ async fn main() {
         .with_state(state);
 
     // Run the server
+    // NOTE: Binding to 0.0.0.0 exposes the service to all network interfaces.
+    // For production use, consider:
+    // - Binding to a specific interface (e.g., "192.168.1.100:7394")
+    // - Using localhost only (e.g., "127.0.0.1:7394") if not needed on network
+    // - Implementing authentication
+    // - Using a reverse proxy with TLS
     let listener = match tokio::net::TcpListener::bind("0.0.0.0:7394").await {
         Ok(l) => {
             info!("DeckRemote service running on http://0.0.0.0:7394");
             info!("Ready to accept connections from Stream Deck");
+            info!("WARNING: Service is exposed on all network interfaces without authentication");
             l
         }
         Err(e) => {
@@ -193,20 +200,22 @@ unsafe extern "system" fn keyboard_hook_proc(
         // Don't block injected events to avoid blocking legitimate input
         if kb_struct.flags & LLKHF_INJECTED == 0 {
             if let Some(ref global_state) = GLOBAL_STATE {
-                let state = global_state.lock().unwrap();
-                
-                // Map virtual key codes to key names
-                let key_name = match kb_struct.vkCode {
-                    0x5B => "LWIN",  // Left Windows key
-                    0x5C => "RWIN",  // Right Windows key
-                    0x5D => "APPS",  // Applications key
-                    _ => "",
-                };
-                
-                if !key_name.is_empty() && state.blocked_keys.contains(key_name) {
-                    // Block the key by returning non-zero
-                    return LRESULT(1);
+                // Handle potential mutex poisoning gracefully
+                if let Ok(state) = global_state.lock() {
+                    // Map virtual key codes to key names
+                    let key_name = match kb_struct.vkCode {
+                        0x5B => "LWIN",  // Left Windows key
+                        0x5C => "RWIN",  // Right Windows key
+                        0x5D => "APPS",  // Applications key
+                        _ => "",
+                    };
+                    
+                    if !key_name.is_empty() && state.blocked_keys.contains(key_name) {
+                        // Block the key by returning non-zero
+                        return LRESULT(1);
+                    }
                 }
+                // If lock fails, don't block the key to avoid breaking keyboard input
             }
         }
     }
