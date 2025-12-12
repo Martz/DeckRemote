@@ -6,10 +6,16 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   build-windows-service:
     name: Build Windows Service
     runs-on: windows-latest
+    
+    permissions:
+      contents: read
     
     steps:
     - uses: actions/checkout@v4
@@ -35,6 +41,9 @@ jobs:
     name: Build Stream Deck Plugin
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read
+    
     steps:
     - uses: actions/checkout@v4
     
@@ -56,3 +65,4 @@ jobs:
       with:
         name: streamdeck-plugin
         path: streamdeck-plugin/com.deckremote.keyblock.sdPlugin/
+
