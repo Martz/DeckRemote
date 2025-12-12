@@ -9,6 +9,8 @@ tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tower-http = { version = "0.5", features = ["cors"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [
@@ -21,3 +23,4 @@ tray-item = "0.10"
 [[bin]]
 name = "deck-remote-service"
 path = "src/main.rs"
+

@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex};
 use tower_http::cors::CorsLayer;
+use tracing::{info, warn, error};
+use tracing_subscriber;
 
 #[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -49,6 +51,15 @@ struct ToggleKeyResponse {
 
 #[tokio::main]
 async fn main() {
+    // Initialize tracing
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .with_thread_ids(false)
+        .with_level(true)
+        .init();
+
+    info!("DeckRemote service starting...");
+
     // Initialize state
     let state = Arc::new(Mutex::new(BlockedKeysState {
         blocked_keys: HashSet::new(),
@@ -75,20 +86,29 @@ async fn main() {
         .with_state(state);
 
     // Run the server
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:7394")
-        .await
-        .expect("Failed to bind to port 7394");
+    let listener = match tokio::net::TcpListener::bind("0.0.0.0:7394").await {
+        Ok(l) => {
+            info!("DeckRemote service running on http://0.0.0.0:7394");
+            info!("Ready to accept connections from Stream Deck");
+            l
+        }
+        Err(e) => {
+            error!("Failed to bind to port 7394: {}", e);
+            error!("Make sure no other application is using this port");
+            std::process::exit(1);
+        }
+    };
 
-    println!("DeckRemote service running on http://0.0.0.0:7394");
-
-    axum::serve(listener, app)
-        .await
-        .expect("Failed to start server");
+    if let Err(e) = axum::serve(listener, app).await {
+        error!("Server error: {}", e);
+        std::process::exit(1);
+    }
 }
 
 async fn get_state(State(state): State<AppState>) -> Json<StateResponse> {
     let state = state.lock().unwrap();
     let blocked_keys: Vec<String> = state.blocked_keys.iter().cloned().collect();
+    info!("State requested - blocked keys: {:?}", blocked_keys);
     Json(StateResponse { blocked_keys })
 }
 
@@ -101,8 +121,10 @@ async fn toggle_key(
     
     if was_blocked {
         state.blocked_keys.remove(&payload.key);
+        info!("Key '{}' unblocked", payload.key);
     } else {
         state.blocked_keys.insert(payload.key.clone());
+        info!("Key '{}' blocked", payload.key);
     }
     
     let now_blocked = !was_blocked;
@@ -138,9 +160,10 @@ fn install_keyboard_hook(state: AppState) {
         if let Ok(hook) = hook_handle {
             let mut state = state.lock().unwrap();
             state.hook_handle = Some(hook);
-            println!("Keyboard hook installed successfully");
+            info!("Keyboard hook installed successfully");
         } else {
-            eprintln!("Failed to install keyboard hook");
+            error!("Failed to install keyboard hook");
+            error!("The service may need to be run with administrator privileges");
         }
     }
 }
@@ -181,27 +204,42 @@ unsafe extern "system" fn keyboard_hook_proc(
 #[cfg(windows)]
 fn setup_tray() {
     std::thread::spawn(|| {
-        let mut tray = tray_item::TrayItem::new(
+        match tray_item::TrayItem::new(
             "DeckRemote",
             tray_item::IconSource::Resource("tray-icon"),
         )
-        .unwrap_or_else(|_| {
-            tray_item::TrayItem::new("DeckRemote", tray_item::IconSource::Resource("")).unwrap()
-        });
+        .or_else(|_| {
+            tray_item::TrayItem::new("DeckRemote", tray_item::IconSource::Resource(""))
+        }) {
+            Ok(mut tray) => {
+                info!("System tray icon created");
+                
+                if let Err(e) = tray.add_label("DeckRemote Service") {
+                    warn!("Failed to add tray label: {}", e);
+                }
+                
+                if let Err(e) = tray.add_label("Running on :7394") {
+                    warn!("Failed to add tray label: {}", e);
+                }
+                
+                let _ = tray.inner_mut().add_separator();
+                
+                if let Err(e) = tray.add_menu_item("Exit", || {
+                    info!("Exit requested from system tray");
+                    std::process::exit(0);
+                }) {
+                    warn!("Failed to add exit menu item: {}", e);
+                }
 
-        tray.add_label("DeckRemote Service").unwrap();
-        tray.add_label("Running on :7394").unwrap();
-        
-        tray.inner_mut().add_separator().unwrap();
-        
-        tray.add_menu_item("Exit", || {
-            std::process::exit(0);
-        })
-        .unwrap();
-
-        // Keep the tray thread alive
-        loop {
-            std::thread::sleep(std::time::Duration::from_secs(1));
+                // Keep the tray thread alive
+                loop {
+                    std::thread::sleep(std::time::Duration::from_secs(1));
+                }
+            }
+            Err(e) => {
+                warn!("Failed to create system tray icon: {}", e);
+                warn!("Service will continue without system tray");
+            }
         }
     });
 }
