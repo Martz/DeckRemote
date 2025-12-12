@@ -1,0 +1,57 @@
+{
+  "Name": "DeckRemote Key Block",
+  "Version": "1.0.0",
+  "Author": "DeckRemote",
+  "Actions": [
+    {
+      "Name": "Toggle Key Block",
+      "UUID": "com.deckremote.keyblock.toggle",
+      "Icon": "images/action",
+      "PropertyInspectorPath": "pi.html",
+      "Tooltip": "Toggle blocking of Windows keys",
+      "States": [
+        {
+          "Image": "images/key-unblocked",
+          "Name": "Unblocked"
+        },
+        {
+          "Image": "images/key-blocked",
+          "Name": "Blocked"
+        }
+      ],
+      "Controllers": ["Keypad"],
+      "Encoder": {
+        "TriggerDescription": {
+          "Rotate": "Adjust",
+          "Push": "Toggle",
+          "Touch": "Toggle",
+          "LongTouch": "Toggle"
+        }
+      }
+    }
+  ],
+  "Category": "DeckRemote",
+  "CategoryIcon": "images/category",
+  "CodePath": "bin/plugin.js",
+  "Description": "Control Windows key blocking remotely",
+  "Icon": "images/plugin",
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.0"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "10.15"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "enabled"
+  },
+  "UUID": "com.deckremote.keyblock"
+}

@@ -1,0 +1,8 @@
+<svg width="144" height="144" xmlns="http://www.w3.org/2000/svg">
+  <rect width="144" height="144" fill="#2d2d2d"/>
+  <rect x="20" y="50" width="104" height="64" rx="8" fill="#4a90e2" stroke="#6bb6ff" stroke-width="2"/>
+  <text x="72" y="85" font-family="Arial, sans-serif" font-size="20" fill="#fff" text-anchor="middle" dominant-baseline="middle">DECK</text>
+  <circle cx="72" cy="35" r="10" fill="#6bb6ff"/>
+  <line x1="72" y1="35" x2="85" y2="55" stroke="#6bb6ff" stroke-width="2"/>
+  <line x1="72" y1="35" x2="59" y2="55" stroke="#6bb6ff" stroke-width="2"/>
+</svg>

@@ -1,0 +1,68 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-service:
+    name: Build Windows Service
+    runs-on: windows-latest
+    
+    permissions:
+      contents: read
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      
+    - name: Build Windows Service
+      working-directory: windows-service
+      run: cargo build --release
+      
+    - name: Run tests
+      working-directory: windows-service
+      run: cargo test --release
+      
+    - name: Upload Windows Service Binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: deck-remote-service-windows
+        path: windows-service/target/release/deck-remote-service.exe
+
+  build-streamdeck-plugin:
+    name: Build Stream Deck Plugin
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install dependencies
+      working-directory: streamdeck-plugin
+      run: npm install
+      
+    - name: Build plugin
+      working-directory: streamdeck-plugin
+      run: npm run build
+      
+    - name: Upload Stream Deck Plugin
+      uses: actions/upload-artifact@v4
+      with:
+        name: streamdeck-plugin
+        path: streamdeck-plugin/com.deckremote.keyblock.sdPlugin/
+

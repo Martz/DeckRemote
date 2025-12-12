@@ -1,0 +1,7 @@
+<svg width="144" height="144" xmlns="http://www.w3.org/2000/svg">
+  <rect width="144" height="144" fill="#1a1a1a"/>
+  <rect x="20" y="40" width="104" height="64" rx="8" fill="#c41e3a" stroke="#ff3347" stroke-width="2"/>
+  <text x="72" y="80" font-family="Arial, sans-serif" font-size="24" fill="#fff" text-anchor="middle" dominant-baseline="middle">KEY</text>
+  <circle cx="110" cy="34" r="16" fill="#ff3347"/>
+  <line x1="110" y1="26" x2="110" y2="42" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+</svg>
